@@ -16,7 +16,7 @@ void MSP430_UART_Init(void){
     //RxTx_RS485_RxEnable;
 
     UCA0CTL1 |= UCSWRST; // Hault UART
-    
+
     UCA0CTL1 |= UCSSEL_2; // BRCLK drawn from SMCLK (I.e. UART clocked by SMCLK)
 
     // UCA0CTL0 |= BIT2; // Use multiprocessor mode with address-bit
@@ -113,21 +113,22 @@ __interrupt void USCI_A0_ISR(void){
             //crc = CRC_Calc((u8*)&InPack, InPack.Length + 1);
             if(((u8*)&InPack)[InPack.Length + 1] == CRC_Calc((u8*)&InPack, InPack.Length + 1)){ // Check incoming packet CRC
                 State.controller_link_timeout = OK_TIMEOUT; // Update OK timeout
-                
+
                 switch(InPack.COMMAND){
                     case GSM_COMMAND_ACK: {
                         OutPack.Length = 2;
-                        kumarin++;
                         if(State.request_burner_switch_off){
                             OutPack.COMMAND = GSM_COMMAND_OFF;
                         }else
                         if(State.request_burner_switch_on){
                             OutPack.COMMAND = GSM_COMMAND_ON;
-                            kumarin = 1;
+                        }else
+                        if(State.request_sen_get){
+                            OutPack.COMMAND = GSM_COMMAND_SEN_GET;
                         }else{
                             OutPack.COMMAND = GSM_COMMAND_DONOTHING;
                         }
-                        *(((u8 *)(&OutPack)) + OutPack.Length) = 
+                        *(((u8 *)(&OutPack)) + OutPack.Length) =
                             CRC_Calc((u8*)&OutPack, OutPack.Length);
                         MSP430_UART_Send(UART_RS485, (u8 *)(&OutPack), OutPack.Length + 1);
                         break;
@@ -135,17 +136,22 @@ __interrupt void USCI_A0_ISR(void){
                     case GSM_COMMAND_SMST: {
                         u8 *text = SmsPool_GetPtrForPush(TelDir_NumItems());
                         strToUCS2(text, InPack.Optional);
-                        
-                        TelDir_Iterator_Init();
-                        while(TelDir_GetNextTelNum(TelNum)){
-                            SMS_Queue_Push(TelNum, text, SMS_LIFETIME);
+                        if(State.request_sen_get){
+                            SMS_Queue_Push(State.TelNumOfSourceOfRequest, text, SMS_LIFETIME);
+                        }else{
+                            TelDir_Iterator_Init();
+                            while(TelDir_GetNextTelNum(TelNum)){
+                                SMS_Queue_Push(TelNum, text, SMS_LIFETIME);
+                            }
                         }
                         break;
                     }
                     case GSM_COMMAND_GOTIT: {
-                        State.request_burner_switch_off = State.request_burner_switch_on = 0;
+                        State.request_burner_switch_off = 0;
+                        State.request_burner_switch_on = 0;
+                        State.request_sen_get = 0;
                         break;
-                    }                    
+                    }
                 }
             }
             num_received_bytes = 0;

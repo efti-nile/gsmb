@@ -208,7 +208,8 @@ void SIM900_ReadSms(void){
     }else
     // Check GSM-link and valves-state simultaneously
     if(SIM900_CircularBuf_Search(SIM900_SMS_CMD_CHECK) != -1){
-
+        State.request_sen_get = 1;
+        strcpy((char *)State.TelNumOfSourceOfRequest, (char const *)TelNum);
     }else
     if(SIM900_CircularBuf_Search(SIM900_SMS_CMD_BURNER_OFF) != -1){
         State.request_burner_switch_on = 0;

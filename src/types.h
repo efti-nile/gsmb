@@ -59,17 +59,8 @@ struct State_TypeDef{
     // BURNER STATES
     u8 request_burner_switch_off;
     u8 request_burner_switch_on;
+    u8 request_sen_get;
 };
-
-/*struct InPack_TypeDef{
-    u8 DevID;
-    u8 Length;
-    u8 SourceAddress;
-    u8 TID;
-    u8 COMMAND;
-    u8 Optional[70];
-    u8 crc;
-};*/
 
 struct InPack_TypeDef{
     u8 Length;

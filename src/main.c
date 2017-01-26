@@ -28,7 +28,7 @@ int main(void)
     __bis_SR_register(GIE);
     SysTimer_Start();
     SIM900_ReInit();
-    
+
 //    if(!PowMeas_ExternSupplyStatus()){
 //        PowerDisappeared();
 //    }
@@ -43,11 +43,16 @@ int main(void)
         }else{
             LED_OFF;
         }
-				
+
 		WDTCTL = WDTPW + WDTCNTCL;
 
         if(SIM900_CircularBuf_Search("+CMTI") != -1){
-            SIM900_ReadSms();
+            // If we have any pending requests than do not read new SMS
+            if( State.request_burner_switch_off ||
+                State.request_burner_switch_on ||
+                State.request_sen_get ){
+                SIM900_ReadSms();
+            }
         }
         SIM900_SendSms();
 
@@ -251,7 +256,7 @@ void SendCmd(void){
     ((u8 *)&OutPack)[OutPack.Length + 1] = CRC_Calc((u8*)&OutPack, OutPack.Length + 1); // Set CRC
 
     RxTx_RS485_TxEnable;
-	
+
     __delay_cycles(40000); // 175 = 7us @ 25MHz
 
     // Send the head of the outgoing packet - address byte
