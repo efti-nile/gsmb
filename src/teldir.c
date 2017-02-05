@@ -1,10 +1,13 @@
 #include "teldir.h"
 
 __no_init static struct TelDir_TypeDef TelDir;
+// Default password
+static const u8 TELDIR_DEFAULT_PWD[] = "043F04300440043E043B044C";
 
 void TelDir_Init(void){
     if(*((u8*)BEGIN_AVAILABLE_SPACE) == 0xFF){ // If it is the first device start
         TelDir_Clean();
+        TelDir_SetPwd((u8 *)TELDIR_DEFAULT_PWD);
     }
 
     flash_read((u8 *)&TelDir, sizeof(TelDir));
@@ -106,10 +109,14 @@ u8 TelDir_NumItems(void){
 }
 
 u8 TelDir_SetPwd(u8 *new_pwd){
-    strcpy(TelDir.Pwd, new_pwd);
+    strcpy((char *)TelDir.Pwd, (char const *)new_pwd);
     if(flash_write((u8 *)&TelDir, sizeof(TelDir)) == 0){
         return TELDIR_PWD_SET_RES_OK;
     }else{
         return TELDIR_RES_FLASH_ERROR;
     }
+}
+
+u8 *TelDir_GetPwd(void){
+    return TelDir.Pwd;
 }

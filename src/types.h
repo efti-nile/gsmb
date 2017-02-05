@@ -114,7 +114,6 @@ struct TelDir_TypeDef{
     u8 isBalanceTelNumSet;
     u8 Iterator;
     u8 Pwd[TELDIR_PWD_MAXLEN];
-    u8 isPwdSet;
 };
 
 // SMS pool

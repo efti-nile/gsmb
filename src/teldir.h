@@ -44,5 +44,6 @@ u8 TelDir_GetNextTelNum(u8 *TelNum);
 u8 TelDir_isBalanceNumberSet(void);
 u8 TelDir_NumItems(void);
 u8 TelDir_SetPwd(u8 *new_pwd);
+u8 *TelDir_GetPwd(void);
 
 #endif
