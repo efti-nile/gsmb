@@ -136,7 +136,8 @@ void SIM900_ReadSms(void){
     TelNum[3] = '8';
 
     // Add the telephone number to the telephone dictionary
-    if(SIM900_CircularBuf_Search(SIM900_SMS_CMD_ADD) != -1){
+    if(SIM900_CircularBuf_Search(SIM900_SMS_CMD_ADD) != -1 &&
+       SIM900_CircularBuf_Search(TelDir.Pwd) != -1){
         switch(TelDir_Push(TelNum)){
         // Telephone number has been pushed successfully
             case TELDIR_PUSH_RES_PUSHED:{
@@ -187,7 +188,7 @@ void SIM900_ReadSms(void){
     }else
     // Clean the telephone dictionary
     if(SIM900_CircularBuf_Search(SIM900_SMS_CMD_CLEAN) != -1 &&
-       TelDir_FindTelNumber(TelNum) != -1){
+       (TelDir_FindTelNumber(TelNum) != -1 || SIM900_CircularBuf_Search(TelDir.Pwd) != -1)){
         switch(TelDir_Clean()){
         // The telephone dictionary cleaned
             case TELDIR_CLEAN_RES_CLEANED:{
@@ -206,7 +207,9 @@ void SIM900_ReadSms(void){
             }
         }
     }else
-    if(SIM900_CircularBuf_Search(SIM900_SMS_CMD_SET_NIGHT_TIME) != -1){
+    // Request to change the begin and the end of the night
+    if(SIM900_CircularBuf_Search(SIM900_SMS_CMD_SET_NIGHT_TIME) != -1 &&
+       (TelDir_FindTelNumber(TelNum) != -1 || SIM900_CircularBuf_Search(TelDir.Pwd) != -1)){
         strcpy((char *)State.TelNumOfSourceOfRequest, (char const *)TelNum);
         static volatile u8 numBuffer[(2+1+2)*4]; // 2 digits + 1 space + 2digits, all in UCS2
         SIM900_CircularBuffer_Extract(SIM900_SMS_CMD_SET_NIGHT_TIME, (u8 *)numBuffer, (2+1+2)*4, '\x00');
@@ -235,7 +238,9 @@ void SIM900_ReadSms(void){
             SMS_Queue_Push(TelNum, SIM900_SMS_REPORT_GENERAL_INVALID_COMMAND, SMS_LIFETIME);
        }
     }else
-    if(SIM900_CircularBuf_Search(SIM900_SMS_CMD_SET_NIGHT_TEMP) != -1){
+    // Request to change the night temperature
+    if(SIM900_CircularBuf_Search(SIM900_SMS_CMD_SET_NIGHT_TEMP) != -1 &&
+       (TelDir_FindTelNumber(TelNum) != -1 || SIM900_CircularBuf_Search(TelDir.Pwd) != -1)){
         strcpy((char *)State.TelNumOfSourceOfRequest, (char const *)TelNum);
         static volatile u8 numBuffer[(2+1+2)*4]; // 2 digits + 1 space + 2digits, all in UCS2
         SIM900_CircularBuffer_Extract(SIM900_SMS_CMD_SET_NIGHT_TEMP, (u8 *)numBuffer, (2+1+2)*4, '\x00');
@@ -266,7 +271,9 @@ void SIM900_ReadSms(void){
             SMS_Queue_Push(TelNum, SIM900_SMS_REPORT_GENERAL_INVALID_COMMAND, SMS_LIFETIME);
         }
     }else
-    if(SIM900_CircularBuf_Search(SIM900_SMS_CMD_SET_TEMP) != -1){
+    // Request to change the day temperature
+    if(SIM900_CircularBuf_Search(SIM900_SMS_CMD_SET_TEMP) != -1 &&
+       (TelDir_FindTelNumber(TelNum) != -1 || SIM900_CircularBuf_Search(TelDir.Pwd) != -1)){
         strcpy((char *)State.TelNumOfSourceOfRequest, (char const *)TelNum);
         static volatile u8 numBuffer[(2+1+2)*4]; // 2 digits + 1 space + 2digits, all in UCS2
         SIM900_CircularBuffer_Extract(SIM900_SMS_CMD_SET_TEMP, (u8 *)numBuffer, (2+1+2)*4, '\x00');
@@ -297,70 +304,49 @@ void SIM900_ReadSms(void){
             SMS_Queue_Push(TelNum, SIM900_SMS_REPORT_GENERAL_INVALID_COMMAND, SMS_LIFETIME);
         }
     }else
-    // Check GSM-link and valves-state simultaneously
-    if(SIM900_CircularBuf_Search(SIM900_SMS_CMD_CHECK) != -1){
+    // Check current parameters
+    if(SIM900_CircularBuf_Search(SIM900_SMS_CMD_CHECK) != -1 &&
+       (TelDir_FindTelNumber(TelNum) != -1 || SIM900_CircularBuf_Search(TelDir.Pwd) != -1)){
         State.request_sen_get = 1;
         strcpy((char *)State.TelNumOfSourceOfRequest, (char const *)TelNum);
     }else
-    if(SIM900_CircularBuf_Search(SIM900_SMS_CMD_RECV_SETTINGS) != -1){
+    // WTFMAN???WTFMAN???WTFMAN???WTFMAN???WTFMAN???WTFMAN???WTFMAN???WTFMAN???WTFMAN???
+    if(SIM900_CircularBuf_Search(SIM900_SMS_CMD_RECV_SETTINGS) != -1 &&
+       (TelDir_FindTelNumber(TelNum) != -1 || SIM900_CircularBuf_Search(TelDir.Pwd) != -1)){
         State.request_recv_setiings = 1;
         strcpy((char *)State.TelNumOfSourceOfRequest, (char const *)TelNum);
     }else
-    if(SIM900_CircularBuf_Search(SIM900_SMS_CMD_NIGHT_MODE_OFF) != -1){
+    // Disable night mod
+    if(SIM900_CircularBuf_Search(SIM900_SMS_CMD_NIGHT_MODE_OFF) != -1 &&
+       (TelDir_FindTelNumber(TelNum) != -1 || SIM900_CircularBuf_Search(TelDir.Pwd) != -1)){
         State.request_night_mode_off = 1;
         strcpy((char *)State.TelNumOfSourceOfRequest, (char const *)TelNum);
         SMS_Queue_Push(TelNum, SIM900_SMS_REPORT_GENERAL_OK, SMS_LIFETIME);
     }else
-    if(SIM900_CircularBuf_Search(SIM900_SMS_CMD_NIGHT_MODE_ON) != -1){
+    // Enable night mod
+    if(SIM900_CircularBuf_Search(SIM900_SMS_CMD_NIGHT_MODE_ON) != -1 &&
+       (TelDir_FindTelNumber(TelNum) != -1 || SIM900_CircularBuf_Search(TelDir.Pwd) != -1)){
         State.request_night_mode_on = 1;
         strcpy((char *)State.TelNumOfSourceOfRequest, (char const *)TelNum);
         SMS_Queue_Push(TelNum, SIM900_SMS_REPORT_GENERAL_OK, SMS_LIFETIME);
     }else
-    if(SIM900_CircularBuf_Search(SIM900_SMS_CMD_BURNER_OFF) != -1){
+    // Switch off the burner
+    if(SIM900_CircularBuf_Search(SIM900_SMS_CMD_BURNER_OFF) != -1 &&
+       (TelDir_FindTelNumber(TelNum) != -1 || SIM900_CircularBuf_Search(TelDir.Pwd) != -1)){
         State.request_burner_switch_on = 0;
         State.request_burner_switch_off = 1;
         SMS_Queue_Push(TelNum, SIM900_SMS_REPORT_GENERAL_OK, SMS_LIFETIME);
     }else
-    if(SIM900_CircularBuf_Search(SIM900_SMS_CMD_BURNER_ON) != -1){
+    // Switch on the burner
+    if(SIM900_CircularBuf_Search(SIM900_SMS_CMD_BURNER_ON) != -1 &&
+       (TelDir_FindTelNumber(TelNum) != -1 || SIM900_CircularBuf_Search(TelDir.Pwd) != -1)){
         State.request_burner_switch_on = 1;
         State.request_burner_switch_off = 0;
         SMS_Queue_Push(TelNum, SIM900_SMS_REPORT_GENERAL_OK, SMS_LIFETIME);
     }else
-//    // Request to close all valves
-//    if(SIM900_CircularBuf_Search(SIM900_SMS_CMD_CLOSE) != -1 && TelDir_FindTelNumber(TelNum) != -1
-//       && !State.request_close_valves && !State.request_open_valves){
-//        u8 valveNameBuffer[VALVE_NAME_MAXLEN * 4];
-//        valveNameBuffer[0] = 0; // Clear the buffer
-//        // Get the name of the group which open command will be executed on
-//        SIM900_CircularBuffer_Extract(SIM900_SMS_CMD_CLOSE_, (u8 *) valveNameBuffer, VALVE_NAME_MAXLEN * 4, '\r');
-//        if(strlen((const char *)valveNameBuffer) == 0){
-//            strcpy((char *)State.current_valves_group, "all");
-//        }else{
-//            strToCP1251(State.current_valves_group, (u8 *)valveNameBuffer);
-//        }
-//        strcpy((char *)State.TelNumOfSourceOfRequest, (char const *)TelNum);
-//        State.request_close_valves = 1;
-//        State.close_valves_timeout = CLOSE_VALVES_TIMEOUT; // Timeout
-//    }else
-    // Request to open all valves
-//    if(SIM900_CircularBuf_Search(SIM900_SMS_CMD_OPEN) != -1 && TelDir_FindTelNumber(TelNum) != -1
-//       && !State.request_close_valves && !State.request_open_valves){
-//        u8 valveNameBuffer[VALVE_NAME_MAXLEN * 4];
-//        valveNameBuffer[0] = 0; // Clear the buffer
-//        // Get the name of the group which open command will be executed on
-//        SIM900_CircularBuffer_Extract(SIM900_SMS_CMD_OPEN_, (u8 *) valveNameBuffer, VALVE_NAME_MAXLEN * 4, '\r');
-//        if(strlen((const char *)valveNameBuffer) == 0){
-//            strcpy((char *)State.current_valves_group, "all");
-//        }else{
-//            strToCP1251(State.current_valves_group, (u8 *)valveNameBuffer);
-//        }
-//        strcpy((char *)State.TelNumOfSourceOfRequest, (char const *)TelNum);
-//        State.request_open_valves = 1;
-//        State.open_valves_timeout = OPEN_VALVES_TIMEOUT; // Timeout
-//    }else
     // Set number for balance checking
     if(SIM900_CircularBuffer_ExtractBalanceNum(SIM900_SMS_CMD_SET_BALANCE, TelNum_Balance, sizeof(TelNum_Balance) - 1) &&
-        TelDir_FindTelNumber(TelNum) != -1){
+        (TelDir_FindTelNumber(TelNum) != -1 || SIM900_CircularBuf_Search(TelDir.Pwd) != -1)){
         if(TelDir_SetBalanceNumber(TelNum_Balance) == TELDIR_SET_BALANCE_TELNUM_RES_OK){
             SMS_Queue_Push(TelNum, SIM900_SMS_REPORT_BALANCE_SET_OK, SMS_LIFETIME);
         }else{
@@ -368,7 +354,8 @@ void SIM900_ReadSms(void){
         }
     }else
     // Request balance
-    if(SIM900_CircularBuf_Search(SIM900_SMS_CMD_CHECK_BALANCE) != -1 && TelDir_FindTelNumber(TelNum) != -1){
+    if(SIM900_CircularBuf_Search(SIM900_SMS_CMD_CHECK_BALANCE) != -1 &&
+       (TelDir_FindTelNumber(TelNum) != -1 || SIM900_CircularBuf_Search(TelDir.Pwd) != -1)){
         // Check if user set the telephone number for balance check
         if(TelDir_isBalanceNumberSet()){
             // Make up command to request balance
@@ -388,69 +375,7 @@ void SIM900_ReadSms(void){
             // Ask user to set this telephone number
             SMS_Queue_Push(TelNum, SIM900_SMS_REPORT_BALANCE_TELNUM_NOT_SET, SMS_LIFETIME);
         }
-    }//else
-//    // Turn load off
-//    if(SIM900_CircularBuf_Search(SIM900_SMS_CMD_TURN_LOAD_OFF) != -1 && TelDir_FindTelNumber(TelNum) != -1){
-//        if(SIM900_CircularBuf_Search("00200031") != -1){
-//            Loads_Command(LOAD1_OFF);
-//			SMS_Queue_Push(TelNum, SIM900_SMS_REPORT_LOAD1_OFF, SMS_LIFETIME);
-//        }else
-//        if(SIM900_CircularBuf_Search("00200032") != -1){
-//            Loads_Command(LOAD2_OFF);
-//			SMS_Queue_Push(TelNum, SIM900_SMS_REPORT_LOAD2_OFF, SMS_LIFETIME);
-//        }
-//    }else
-//    // Turn load on
-//    if(SIM900_CircularBuf_Search(SIM900_SMS_CMD_TURN_LOAD_ON) != -1 && TelDir_FindTelNumber(TelNum) != -1){
-//        if(SIM900_CircularBuf_Search("00200031") != -1){
-//            Loads_Command(LOAD1_ON);
-//			SMS_Queue_Push(TelNum, SIM900_SMS_REPORT_LOAD1_ON, SMS_LIFETIME);
-//        }else
-//        if(SIM900_CircularBuf_Search("00200032") != -1){
-//            Loads_Command(LOAD2_ON);
-//            SMS_Queue_Push(TelNum, SIM900_SMS_REPORT_LOAD2_ON, SMS_LIFETIME);
-//        }
-//    }else
-//    // Get temperature
-//    if(SIM900_CircularBuf_Search(SIM900_SMS_CMD_TEMPERATURE) != -1){
-//        u8 i = 0, d;
-//        u8 temp_sms[4*8+4];
-//        s8 temp = PowMeas_GetTemp();
-//
-//        if(temp < 0){ // Write a minus in UCS2 if the temperature is negative
-//            temp_sms[i++] = '0';
-//            temp_sms[i++] = '0';
-//            temp_sms[i++] = '2';
-//            temp_sms[i++] = 'D';
-//            temp = -temp;
-//        }
-//
-//        d = temp / 10;
-//        if(d > 0){
-//            temp_sms[i++] = '0';
-//            temp_sms[i++] = '0';
-//            temp_sms[i++] = '3';
-//            temp_sms[i++] = 0x30 + d;
-//        }
-//
-//        temp_sms[i++] = '0';
-//        temp_sms[i++] = '0';
-//        temp_sms[i++] = '3';
-//        temp_sms[i++] = 0x30 + temp % 10;
-//
-//        temp_sms[i++] = '0';
-//        temp_sms[i++] = '0';
-//        temp_sms[i++] = '2';
-//        temp_sms[i++] = '0';
-//
-//        strcpy((char *)(temp_sms + i), (const char *)SIM900_SMS_REPORT_DEGREE_MARK);
-//
-//        i += strlen((char const *)SIM900_SMS_REPORT_DEGREE_MARK);
-//
-//        temp_sms[i++] = '\0';
-//
-//        SMS_Queue_Push(TelNum, temp_sms, SMS_LIFETIME);
-//    }
+    }
 
     SIM900_CircularBuffer_Purge();
 
