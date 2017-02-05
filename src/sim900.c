@@ -88,13 +88,6 @@ func_begin:
     if(!SIM900_GetStatus()){
         goto func_begin;
     }
-
-    // TODO Thise blinks cannot be noticed due to systimer blinking
-//    LED_OFF;
-//    Delay_DelayMs(500);
-//    LED_ON;
-//    Delay_DelayMs(500);
-//    LED_OFF;
 }
 
 void SIM900_ReadSms(void){
@@ -541,6 +534,48 @@ u8 SIM900_CircularBuffer_Extract(const u8 Pattern[], u8 *Dst, u16 Num, u8 DelCha
                 j = j < CIRBUF_SIZE - 1 ? ++j : 0; // set pointer to the begin
                 for(    q = 0;
                         q < Num && CirBuf[j] != DelChar;
+                        j = j < CIRBUF_SIZE - 1 ? ++j : 0, ++q  ) Dst[q] = CirBuf[j];
+                Dst[q] = '\0';
+                return 1;
+            }
+        }
+    }
+    return 0;
+}
+
+u8 SIM900_CircularBuffer_ExtractWithUnicodeDelimeter(const u8 Pattern[], u8 *Dst, u16 Num, u8* DelChar){
+    u16 i, j, k, l, p, q;
+
+    // Find length of given pattern
+    for(l = 0; Pattern[l]; ++l);
+
+    // Check if circular buffer can fit in given pattern
+    if(CirBuf_NumBytes < l){
+        return 0;
+    }
+
+    // Index of byte before the last received one
+    p = CirBuf_Tail > 0 ? --CirBuf_Tail : CIRBUF_SIZE - 1;
+
+    // Calculate offset for search
+    if(CirBuf_Head >= l){
+        i = CirBuf_Head - l;
+    }else{
+        i = CIRBUF_SIZE - (l - CirBuf_Head);
+    }
+
+    for( ; i != p; i = i > 0 ? --i : CIRBUF_SIZE - 1){
+        for(    j = i, k = 0;
+                Pattern[k] == CirBuf[j];
+                j = j < CIRBUF_SIZE - 1 ? ++j : 0 ){
+            if(k++ >= l - 1){
+                j = j < CIRBUF_SIZE - 1 ? ++j : 0; // set pointer to the begin
+                for(    q = 0;
+                        q < Num &&
+                            (CirBuf[j] != DelChar[0] &&
+                             CirBuf[j + 1 < CIRBUF_SIZE ? j + 1 : j + 1 - CIRBUF_SIZE] != DelChar[1] &&
+                             CirBuf[j + 2 < CIRBUF_SIZE ? j + 2 : j + 2 - CIRBUF_SIZE] != DelChar[2] &&
+                             CirBuf[j + 3 < CIRBUF_SIZE ? j + 3 : j + 3 - CIRBUF_SIZE] != DelChar[3]);
                         j = j < CIRBUF_SIZE - 1 ? ++j : 0, ++q  ) Dst[q] = CirBuf[j];
                 Dst[q] = '\0';
                 return 1;
