@@ -17,8 +17,8 @@ int main(void)
     TelDir_Init();
 
 #ifdef __DBG__
-    TelDir_SetBalanceNumber("002A0031003000300023");
-    TelDir_Push("00380039003100390038003000340031003100350034");
+    //TelDir_SetBalanceNumber("002A0031003000300023");
+    //TelDir_Push("00380039003100390038003000340031003100350034");
 #endif
 
     MSP430_UART_Init();
@@ -48,9 +48,11 @@ int main(void)
 
         if(SIM900_CircularBuf_Search("+CMTI") != -1){
             // If we have any pending requests than do not read new SMS
-            if( State.request_burner_switch_off ||
-                State.request_burner_switch_on ||
-                State.request_sen_get ){
+            if(!State.request_burner_switch_off &&
+               !State.request_burner_switch_on &&
+               !State.request_sen_get &&
+               !State.request_night_mode_on &&
+               !State.request_night_mode_off){
                 SIM900_ReadSms();
             }
         }

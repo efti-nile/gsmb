@@ -60,6 +60,21 @@ struct State_TypeDef{
     u8 request_burner_switch_off;
     u8 request_burner_switch_on;
     u8 request_sen_get;
+    u8 request_night_mode_on;
+    u8 request_night_mode_off;
+    u8 request_recv_setiings;
+
+    u8 request_set_day_temp;
+    u8 temp_day_max;
+    u8 temp_day_min;
+
+    u8 request_set_night_temp;
+    u8 temp_night_max;
+    u8 temp_night_min;
+
+    u8 request_set_night_time;
+    u8 night_begin;
+    u8 night_end;
 };
 
 struct InPack_TypeDef{
@@ -90,6 +105,7 @@ struct SMS_Queque_TypeDef{
 // Telephone dirictory size
 #define TELDIR_TELNUM_LEN (44+1) // Length of the one telephone number (UCS2 coding)
 #define TELDIR_SIZE 10 // Number of slots for telephone numbers
+#define TELDIR_PWD_MAXLEN (4*10+1)
 
 struct TelDir_TypeDef{
     u8 NumItems;
@@ -97,10 +113,12 @@ struct TelDir_TypeDef{
 	u8 BalanceTelNum[TELDIR_TELNUM_LEN];
     u8 isBalanceTelNumSet;
     u8 Iterator;
+    u8 Pwd[TELDIR_PWD_MAXLEN];
+    u8 isPwdSet;
 };
 
 // SMS pool
-#define SMSPOOL_SMS_MAXLEN (70 + 1)
+#define SMSPOOL_SMS_MAXLEN (160 + 1)
 #define SMSPOOL_SIZE 3
 
 struct SmsPool_Item_TypeDef{

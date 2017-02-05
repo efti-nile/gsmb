@@ -206,10 +206,115 @@ void SIM900_ReadSms(void){
             }
         }
     }else
+    if(SIM900_CircularBuf_Search(SIM900_SMS_CMD_SET_NIGHT_TIME) != -1){
+        strcpy((char *)State.TelNumOfSourceOfRequest, (char const *)TelNum);
+        static volatile u8 numBuffer[(2+1+2)*4]; // 2 digits + 1 space + 2digits, all in UCS2
+        SIM900_CircularBuffer_Extract(SIM900_SMS_CMD_SET_NIGHT_TIME, (u8 *)numBuffer, (2+1+2)*4, '\x00');
+        if(numBuffer[6] == '2'){
+            State.night_begin = numBuffer[3] - 0x30;
+            if(numBuffer[14] == '3'){
+                State.night_end = 10 * (numBuffer[11] - 0x30) + (numBuffer[15] - 0x30);
+            }else{
+                State.night_end = numBuffer[11] - 0x30;
+            }
+        }else
+        if(numBuffer[10] == '2'){
+            State.night_begin = 10 * (numBuffer[3] - 0x30) + (numBuffer[7] - 0x30);
+            if(numBuffer[18] == '3'){
+                State.night_end = 10 * (numBuffer[15] - 0x30) + (numBuffer[19] - 0x30);
+            }else{
+                State.night_end = numBuffer[15] - 0x30;
+            }
+        }
+        if(State.night_begin <= 23 && State.night_end <= 23 &&
+           State.night_begin != State.night_end){
+            State.request_set_night_time = 1;
+            SMS_Queue_Push(TelNum, SIM900_SMS_REPORT_GENERAL_OK, SMS_LIFETIME);
+       }else{
+            State.request_set_night_time = 0;
+            SMS_Queue_Push(TelNum, SIM900_SMS_REPORT_GENERAL_INVALID_COMMAND, SMS_LIFETIME);
+       }
+    }else
+    if(SIM900_CircularBuf_Search(SIM900_SMS_CMD_SET_NIGHT_TEMP) != -1){
+        strcpy((char *)State.TelNumOfSourceOfRequest, (char const *)TelNum);
+        static volatile u8 numBuffer[(2+1+2)*4]; // 2 digits + 1 space + 2digits, all in UCS2
+        SIM900_CircularBuffer_Extract(SIM900_SMS_CMD_SET_NIGHT_TEMP, (u8 *)numBuffer, (2+1+2)*4, '\x00');
+        // Check if extracted substring is correct...
+        u16 sum;
+        for(u16 i = 0; i < (2+1+2)*4; i++){
+            sum += numBuffer[i] - 0x30;
+        }
+        if(sum < (3 + 9 + 3 + 9 + 2 + 3 + 9 + 3 + 9 + 100)){
+            State.temp_night_max = 10 * (numBuffer[3] - 0x30) + (numBuffer[7] - 0x30);
+            State.temp_night_min = 10 * (numBuffer[15] - 0x30) + (numBuffer[19] - 0x30);
+            if(State.temp_night_min < 10 || State.temp_night_min > 90 ||
+               State.temp_night_max < 10 || State.temp_night_max > 90 ||
+               State.temp_night_min == State.temp_night_max){
+                goto SendIncorrectNightTemperatureSMS;
+            }
+            if(State.temp_night_max < State.temp_night_min){
+                u8 swap;
+                swap = State.temp_night_max;
+                State.temp_night_max = State.temp_night_min;
+                State.temp_night_min = swap;
+            }
+            State.request_set_night_temp = 1;
+            SMS_Queue_Push(TelNum, SIM900_SMS_REPORT_GENERAL_OK, SMS_LIFETIME);
+        }else{
+        SendIncorrectNightTemperatureSMS:
+            State.request_set_night_temp = 0;
+            SMS_Queue_Push(TelNum, SIM900_SMS_REPORT_GENERAL_INVALID_COMMAND, SMS_LIFETIME);
+        }
+    }else
+    if(SIM900_CircularBuf_Search(SIM900_SMS_CMD_SET_TEMP) != -1){
+        strcpy((char *)State.TelNumOfSourceOfRequest, (char const *)TelNum);
+        static volatile u8 numBuffer[(2+1+2)*4]; // 2 digits + 1 space + 2digits, all in UCS2
+        SIM900_CircularBuffer_Extract(SIM900_SMS_CMD_SET_TEMP, (u8 *)numBuffer, (2+1+2)*4, '\x00');
+        // Check if extracted substring is correct...
+        u16 sum;
+        for(u16 i = 0; i < (2+1+2)*4; i++){
+            sum += numBuffer[i] - 0x30;
+        }
+        if(sum < (3 + 9 + 3 + 9 + 2 + 3 + 9 + 3 + 9 + 100)){
+            State.temp_day_max = 10 * (numBuffer[3] - 0x30) + (numBuffer[7] - 0x30);
+            State.temp_day_min = 10 * (numBuffer[15] - 0x30) + (numBuffer[19] - 0x30);
+            if(State.temp_day_min < 10 || State.temp_day_min > 90 ||
+               State.temp_day_max < 10 || State.temp_day_max > 90 ||
+               State.temp_day_min == State.temp_day_max){
+                goto SendIncorrectTemperatureSMS;
+            }
+            if(State.temp_day_max < State.temp_day_min){
+                u8 swap;
+                swap = State.temp_day_max;
+                State.temp_day_max = State.temp_day_min;
+                State.temp_day_min = swap;
+            }
+            State.request_set_day_temp = 1;
+            SMS_Queue_Push(TelNum, SIM900_SMS_REPORT_GENERAL_OK, SMS_LIFETIME);
+        }else{
+        SendIncorrectTemperatureSMS:
+            State.request_set_day_temp = 0;
+            SMS_Queue_Push(TelNum, SIM900_SMS_REPORT_GENERAL_INVALID_COMMAND, SMS_LIFETIME);
+        }
+    }else
     // Check GSM-link and valves-state simultaneously
     if(SIM900_CircularBuf_Search(SIM900_SMS_CMD_CHECK) != -1){
         State.request_sen_get = 1;
         strcpy((char *)State.TelNumOfSourceOfRequest, (char const *)TelNum);
+    }else
+    if(SIM900_CircularBuf_Search(SIM900_SMS_CMD_RECV_SETTINGS) != -1){
+        State.request_recv_setiings = 1;
+        strcpy((char *)State.TelNumOfSourceOfRequest, (char const *)TelNum);
+    }else
+    if(SIM900_CircularBuf_Search(SIM900_SMS_CMD_NIGHT_MODE_OFF) != -1){
+        State.request_night_mode_off = 1;
+        strcpy((char *)State.TelNumOfSourceOfRequest, (char const *)TelNum);
+        SMS_Queue_Push(TelNum, SIM900_SMS_REPORT_GENERAL_OK, SMS_LIFETIME);
+    }else
+    if(SIM900_CircularBuf_Search(SIM900_SMS_CMD_NIGHT_MODE_ON) != -1){
+        State.request_night_mode_on = 1;
+        strcpy((char *)State.TelNumOfSourceOfRequest, (char const *)TelNum);
+        SMS_Queue_Push(TelNum, SIM900_SMS_REPORT_GENERAL_OK, SMS_LIFETIME);
     }else
     if(SIM900_CircularBuf_Search(SIM900_SMS_CMD_BURNER_OFF) != -1){
         State.request_burner_switch_on = 0;

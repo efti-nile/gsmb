@@ -104,3 +104,12 @@ u8 TelDir_isBalanceNumberSet(void){
 u8 TelDir_NumItems(void){
     return TelDir.NumItems;
 }
+
+u8 TelDir_SetPwd(u8 *new_pwd){
+    strcpy(TelDir.Pwd, new_pwd);
+    if(flash_write((u8 *)&TelDir, sizeof(TelDir)) == 0){
+        return TELDIR_PWD_SET_RES_OK;
+    }else{
+        return TELDIR_RES_FLASH_ERROR;
+    }
+}

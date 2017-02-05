@@ -111,7 +111,7 @@ __interrupt void USCI_A0_ISR(void){
         if(num_received_bytes >= InPack.Length + 1){
             //volatile static u8 crc = 0;
             //crc = CRC_Calc((u8*)&InPack, InPack.Length + 1);
-            if(((u8*)&InPack)[InPack.Length + 1] == CRC_Calc((u8*)&InPack, InPack.Length + 1)){ // Check incoming packet CRC
+            if(((u8*)&InPack)[InPack.Length] == CRC_Calc((u8*)&InPack, InPack.Length)){ // Check incoming packet CRC
                 State.controller_link_timeout = OK_TIMEOUT; // Update OK timeout
 
                 switch(InPack.COMMAND){
@@ -125,6 +125,33 @@ __interrupt void USCI_A0_ISR(void){
                         }else
                         if(State.request_sen_get){
                             OutPack.COMMAND = GSM_COMMAND_SEN_GET;
+                        }else
+                        if(State.request_night_mode_on){
+                            OutPack.COMMAND = GSM_COMMAND_NIGHT_ON;
+                        }else
+                        if(State.request_night_mode_off){
+                            OutPack.COMMAND = GSM_COMMAND_NIGHT_OFF;
+                        }else
+                        if(State.request_recv_setiings){
+                            OutPack.COMMAND = GSM_COMMAND_TARGET_T_GET;
+                        }else
+                        if(State.request_set_day_temp){
+                            OutPack.Length = 4;
+                            OutPack.COMMAND = GSM_COMMAND_SET_TDAY;
+                            OutPack.Optional[0] = State.temp_day_max;
+                            OutPack.Optional[1] = State.temp_day_min;
+                        }else
+                        if(State.request_set_night_temp){
+                            OutPack.Length = 4;
+                            OutPack.COMMAND = GSM_COMMAND_SET_TNIGHT;
+                            OutPack.Optional[0] = State.temp_night_max;
+                            OutPack.Optional[1] = State.temp_night_min;
+                        }else
+                        if(State.request_set_night_time){
+                            OutPack.Length = 4;
+                            OutPack.COMMAND = GSM_COMMAND_NIGHT_SET;
+                            OutPack.Optional[0] = State.night_begin;
+                            OutPack.Optional[1] = State.night_end;
                         }else{
                             OutPack.COMMAND = GSM_COMMAND_DONOTHING;
                         }
@@ -134,14 +161,15 @@ __interrupt void USCI_A0_ISR(void){
                         break;
                     }
                     case GSM_COMMAND_SMST: {
-                        u8 *text = SmsPool_GetPtrForPush(TelDir_NumItems());
-                        strToUCS2(text, InPack.Optional);
-                        if(State.request_sen_get){
-                            SMS_Queue_Push(State.TelNumOfSourceOfRequest, text, SMS_LIFETIME);
+                        volatile static u8 *text;
+                        text = SmsPool_GetPtrForPush(TelDir_NumItems());
+                        strToUCS2((u8 *)text, InPack.Optional);
+                        if(State.request_sen_get || State.request_recv_setiings){
+                            SMS_Queue_Push(State.TelNumOfSourceOfRequest, (u8 *)text, SMS_LIFETIME);
                         }else{
                             TelDir_Iterator_Init();
                             while(TelDir_GetNextTelNum(TelNum)){
-                                SMS_Queue_Push(TelNum, text, SMS_LIFETIME);
+                                SMS_Queue_Push(TelNum, (u8 *)text, SMS_LIFETIME);
                             }
                         }
                         break;
@@ -150,6 +178,12 @@ __interrupt void USCI_A0_ISR(void){
                         State.request_burner_switch_off = 0;
                         State.request_burner_switch_on = 0;
                         State.request_sen_get = 0;
+                        State.request_night_mode_on = 0;
+                        State.request_night_mode_off = 0;
+                        State.request_recv_setiings = 0;
+                        State.request_set_day_temp = 0;
+                        State.request_set_night_temp = 0;
+                        State.request_set_night_time = 0;
                         break;
                     }
                 }

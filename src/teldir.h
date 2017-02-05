@@ -25,6 +25,9 @@
 // Function TelDir_SetBalanceNumber
 #define TELDIR_SET_BALANCE_TELNUM_RES_OK   0
 
+// Function TelDir_SetPwd
+#define TELDIR_PWD_SET_RES_OK (0)
+
 #define FLASH_END 0x00FF70 // 0x00FF80 Actualy
 #define FLASH_SEGSIZE 512 // 512 bytes segment (MSP430F5)
 #define FLASH_TELDIR (FLASH_END - (sizeof(TelDir)/FLASH_PAGESIZE + 1)*FLASH_PAGESIZE)
@@ -40,5 +43,6 @@ void TelDir_Iterator_Init(void);
 u8 TelDir_GetNextTelNum(u8 *TelNum);
 u8 TelDir_isBalanceNumberSet(void);
 u8 TelDir_NumItems(void);
+u8 TelDir_SetPwd(u8 *new_pwd);
 
 #endif
