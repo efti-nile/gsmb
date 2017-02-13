@@ -7,6 +7,8 @@ u16 CirBuf_NumBytes = 0;
 
 u8 TelNum[SMS_TELNUM_LEN];
 
+u8 num_received_bytes = 0;
+
 /*!
     \brief Initializes USCI_A0 (for RS486) and USCI_A1 (for SIM900) as UARTs
 */
@@ -94,7 +96,6 @@ void MSP430_UART_Send(u8 interface, u8 *src, u16 num){
 #pragma vector=USCI_A0_VECTOR
 __interrupt void USCI_A0_ISR(void){
     volatile u8 tmp, if_address;
-    static u8 num_received_bytes = 0;
     static u8 kumarin = 1; // DELETE
     switch(__even_in_range(UCA0IV,4))
     {
@@ -109,14 +110,14 @@ __interrupt void USCI_A0_ISR(void){
 
         // If we managed to receive all pack's bytes until time-out expired
         if(num_received_bytes >= InPack.Length + 1){
-            //volatile static u8 crc = 0;
-            //crc = CRC_Calc((u8*)&InPack, InPack.Length + 1);
-            if(((u8*)&InPack)[InPack.Length] == CRC_Calc((u8*)&InPack, InPack.Length)){ // Check incoming packet CRC
-                State.controller_link_timeout = OK_TIMEOUT; // Update OK timeout
-
+            // Check incoming packet CRC
+            if(((u8*)&InPack)[InPack.Length] == CRC_Calc((u8*)&InPack, InPack.Length)){
                 switch(InPack.COMMAND){
                     case GSM_COMMAND_ACK: {
                         OutPack.Length = 2;
+                        if(State.sms_received){
+                            OutPack.COMMAND = GSM_COMMAND_SMS_OK;
+                        }else
                         if(State.request_burner_switch_off){
                             OutPack.COMMAND = GSM_COMMAND_OFF;
                         }else
@@ -161,12 +162,19 @@ __interrupt void USCI_A0_ISR(void){
                         break;
                     }
                     case GSM_COMMAND_SMST: {
-                        volatile static u8 *text;
-                        text = SmsPool_GetPtrForPush(TelDir_NumItems());
-                        strToUCS2((u8 *)text, InPack.Optional);
-                        if(State.request_sen_get || State.request_recv_setiings){
+                        u8 *text;
+                        State.sms_received = 1;
+                        if(State.request_sen_get || State.request_recv_setiings ||
+                           State.request_set_night_time || State.request_set_night_temp ||
+                           State.request_set_day_temp || State.request_night_mode_on || 
+                           State.request_night_mode_off || State.request_burner_switch_on ||
+                           State.request_burner_switch_off){
+                            text = SmsPool_GetPtrForPush(1);
+                            strToUCS2((u8 *)text, InPack.Optional);
                             SMS_Queue_Push(State.TelNumOfSourceOfRequest, (u8 *)text, SMS_LIFETIME);
                         }else{
+                            text = SmsPool_GetPtrForPush(TelDir_NumItems());
+                            strToUCS2((u8 *)text, InPack.Optional);
                             TelDir_Iterator_Init();
                             while(TelDir_GetNextTelNum(TelNum)){
                                 SMS_Queue_Push(TelNum, (u8 *)text, SMS_LIFETIME);
@@ -184,6 +192,7 @@ __interrupt void USCI_A0_ISR(void){
                         State.request_set_day_temp = 0;
                         State.request_set_night_temp = 0;
                         State.request_set_night_time = 0;
+                        State.sms_received = 0;
                         break;
                     }
                 }

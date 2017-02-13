@@ -23,6 +23,7 @@
 //#define GSM_COMMAND_SETTINGS_GET  247
 #define GSM_COMMAND_TARGET_T_GET  246
 #define GSM_COMMAND_DONOTHING     245
+#define GSM_COMMAND_SMS_OK        244
 
 // R\E\ RS485 - P3.2
 #define RxTx_RS485_INIT {P3OUT &= ~BIT2; P3DIR |= BIT2; P3REN &= ~BIT2; P3SEL &= ~BIT2; P3DS &= ~BIT2;}
@@ -36,5 +37,7 @@ void MSP430_UART_SendAddress(u8 interface, u8 address);
 void MSP430_UART_Send(u8 interface, u8 *src, u16 num);
 __interrupt void USCI_A0_ISR(void);
 __interrupt void USCI_A1_ISR(void);
+
+extern u8 num_received_bytes;
 
 #endif

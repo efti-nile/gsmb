@@ -75,6 +75,8 @@ struct State_TypeDef{
     u8 request_set_night_time;
     u8 night_begin;
     u8 night_end;
+
+    u8 sms_received;
 };
 
 struct InPack_TypeDef{

@@ -160,7 +160,8 @@ void SIM900_ReadSms(void){
         }
     }else
     // Delete telephone number from the dictionary
-    if(SIM900_CircularBuf_Search(SIM900_SMS_CMD_DEL) != -1){
+    if(SIM900_CircularBuf_Search(SIM900_SMS_CMD_DEL) != -1 &&
+       SIM900_CircularBuf_Search(TelDir_GetPwd()) != -1){
         switch(TelDir_Del(TelNum)){
         // Telephone number has been deleted successfully
             case TELDIR_DEL_RES_DELETED:{
@@ -181,7 +182,7 @@ void SIM900_ReadSms(void){
     }else
     // Clean the telephone dictionary
     if(SIM900_CircularBuf_Search(SIM900_SMS_CMD_CLEAN) != -1 &&
-       (TelDir_FindTelNumber(TelNum) != -1 || SIM900_CircularBuf_Search(TelDir_GetPwd()) != -1)){
+       TelDir_FindTelNumber(TelNum) != -1 && SIM900_CircularBuf_Search(TelDir_GetPwd()) != -1){
         switch(TelDir_Clean()){
         // The telephone dictionary cleaned
             case TELDIR_CLEAN_RES_CLEANED:{
@@ -200,36 +201,50 @@ void SIM900_ReadSms(void){
             }
         }
     }else
+    // Set new password
+    if(SIM900_CircularBuf_Search(SIM900_SMS_CMD_SET_PASSWORD) != -1 &&
+       TelDir_FindTelNumber(TelNum) != -1){
+        // Extract new password -- all characters from space after the command to the end of SMS
+        SIM900_CircularBuffer_ExtractWithUnicodeDelimeter(SIM900_SMS_CMD_SET_PASSWORD, \
+                TelDir_GetPwd(), TELDIR_PWD_MAXLEN, SIM900_SMS_END_PATTERN);
+        // Compile the answer in the pool
+        u8 *text = SmsPool_GetPtrForPush(1);
+        strcpy((char *) text, (const char *) SIM900_SMS_REPORT_PASSWORD_SET);
+        strcpy((char *) text + sizeof(SIM900_SMS_REPORT_PASSWORD_SET) - 1, \
+            (const char *) TelDir_GetPwd());
+        // Push answer in the SMS queue
+        SMS_Queue_Push(TelNum,  (u8 *)text, SMS_LIFETIME);
+    }else
     // Request to change the begin and the end of the night
     if(SIM900_CircularBuf_Search(SIM900_SMS_CMD_SET_NIGHT_TIME) != -1 &&
        (TelDir_FindTelNumber(TelNum) != -1 || SIM900_CircularBuf_Search(TelDir_GetPwd()) != -1)){
         strcpy((char *)State.TelNumOfSourceOfRequest, (char const *)TelNum);
         static volatile u8 numBuffer[(2+1+2)*4]; // 2 digits + 1 space + 2digits, all in UCS2
+		// Extract 5 UCS2 symbols after SIM900_SMS_CMD_SET_NIGHT_TIME substring
         SIM900_CircularBuffer_Extract(SIM900_SMS_CMD_SET_NIGHT_TIME, (u8 *)numBuffer, (2+1+2)*4, '\x00');
-        if(numBuffer[6] == '2'){
-            State.night_begin = numBuffer[3] - 0x30;
+        if(numBuffer[6] == '2'){ // If the begin hour number contains 1 digit
+            State.night_begin = numBuffer[3] - '0';
             if(numBuffer[14] == '3'){
-                State.night_end = 10 * (numBuffer[11] - 0x30) + (numBuffer[15] - 0x30);
+                State.night_end = 10 * (numBuffer[11] - '0') + (numBuffer[15] - '0');
             }else{
-                State.night_end = numBuffer[11] - 0x30;
+                State.night_end = numBuffer[11] - '0';
             }
-        }else
+        }else // If the begin hour number contains 2 digits
         if(numBuffer[10] == '2'){
-            State.night_begin = 10 * (numBuffer[3] - 0x30) + (numBuffer[7] - 0x30);
+            State.night_begin = 10 * (numBuffer[3] - '0') + (numBuffer[7] - '0');
             if(numBuffer[18] == '3'){
-                State.night_end = 10 * (numBuffer[15] - 0x30) + (numBuffer[19] - 0x30);
+                State.night_end = 10 * (numBuffer[15] - '0') + (numBuffer[19] - '0');
             }else{
-                State.night_end = numBuffer[15] - 0x30;
+                State.night_end = numBuffer[15] - '0';
             }
         }
-        if(State.night_begin <= 23 && State.night_end <= 23 &&
-           State.night_begin != State.night_end){
+        // Check parameters
+        if(State.night_begin <= 23 && State.night_end <= 23 && State.night_begin != State.night_end){
             State.request_set_night_time = 1;
-            SMS_Queue_Push(TelNum, SIM900_SMS_REPORT_GENERAL_OK, SMS_LIFETIME);
-       }else{
+        }else{
             State.request_set_night_time = 0;
             SMS_Queue_Push(TelNum, SIM900_SMS_REPORT_GENERAL_INVALID_COMMAND, SMS_LIFETIME);
-       }
+        }
     }else
     // Request to change the night temperature
     if(SIM900_CircularBuf_Search(SIM900_SMS_CMD_SET_NIGHT_TEMP) != -1 &&
@@ -237,19 +252,16 @@ void SIM900_ReadSms(void){
         strcpy((char *)State.TelNumOfSourceOfRequest, (char const *)TelNum);
         static volatile u8 numBuffer[(2+1+2)*4]; // 2 digits + 1 space + 2digits, all in UCS2
         SIM900_CircularBuffer_Extract(SIM900_SMS_CMD_SET_NIGHT_TEMP, (u8 *)numBuffer, (2+1+2)*4, '\x00');
-        // Check if extracted substring is correct...
-        u16 sum;
-        for(u16 i = 0; i < (2+1+2)*4; i++){
-            sum += numBuffer[i] - 0x30;
-        }
-        if(sum < (3 + 9 + 3 + 9 + 2 + 3 + 9 + 3 + 9 + 100)){
-            State.temp_night_max = 10 * (numBuffer[3] - 0x30) + (numBuffer[7] - 0x30);
-            State.temp_night_min = 10 * (numBuffer[15] - 0x30) + (numBuffer[19] - 0x30);
-            if(State.temp_night_min < 10 || State.temp_night_min > 90 ||
-               State.temp_night_max < 10 || State.temp_night_max > 90 ||
-               State.temp_night_min == State.temp_night_max){
-                goto SendIncorrectNightTemperatureSMS;
-            }
+        // Read max. and min. temperatures
+        State.temp_night_max = 10 * (numBuffer[3] - '0')  + (numBuffer[7] - '0');
+        State.temp_night_min = 10 * (numBuffer[15] - '0') + (numBuffer[19] - '0');
+        if(State.temp_night_min < 10 || State.temp_night_min > 90 ||
+           State.temp_night_max < 10 || State.temp_night_max > 90 ||
+           State.temp_night_min == State.temp_night_max){
+            State.request_set_night_temp = 0;
+            SMS_Queue_Push(TelNum, SIM900_SMS_REPORT_GENERAL_INVALID_COMMAND, SMS_LIFETIME);
+        }else{
+            // If max. temp. < min. temp., swap them
             if(State.temp_night_max < State.temp_night_min){
                 u8 swap;
                 swap = State.temp_night_max;
@@ -257,11 +269,6 @@ void SIM900_ReadSms(void){
                 State.temp_night_min = swap;
             }
             State.request_set_night_temp = 1;
-            SMS_Queue_Push(TelNum, SIM900_SMS_REPORT_GENERAL_OK, SMS_LIFETIME);
-        }else{
-        SendIncorrectNightTemperatureSMS:
-            State.request_set_night_temp = 0;
-            SMS_Queue_Push(TelNum, SIM900_SMS_REPORT_GENERAL_INVALID_COMMAND, SMS_LIFETIME);
         }
     }else
     // Request to change the day temperature
@@ -270,19 +277,16 @@ void SIM900_ReadSms(void){
         strcpy((char *)State.TelNumOfSourceOfRequest, (char const *)TelNum);
         static volatile u8 numBuffer[(2+1+2)*4]; // 2 digits + 1 space + 2digits, all in UCS2
         SIM900_CircularBuffer_Extract(SIM900_SMS_CMD_SET_TEMP, (u8 *)numBuffer, (2+1+2)*4, '\x00');
-        // Check if extracted substring is correct...
-        u16 sum;
-        for(u16 i = 0; i < (2+1+2)*4; i++){
-            sum += numBuffer[i] - 0x30;
-        }
-        if(sum < (3 + 9 + 3 + 9 + 2 + 3 + 9 + 3 + 9 + 100)){
-            State.temp_day_max = 10 * (numBuffer[3] - 0x30) + (numBuffer[7] - 0x30);
-            State.temp_day_min = 10 * (numBuffer[15] - 0x30) + (numBuffer[19] - 0x30);
-            if(State.temp_day_min < 10 || State.temp_day_min > 90 ||
-               State.temp_day_max < 10 || State.temp_day_max > 90 ||
-               State.temp_day_min == State.temp_day_max){
-                goto SendIncorrectTemperatureSMS;
-            }
+        // Read max. and min. temperatures
+        State.temp_day_max = 10 * (numBuffer[3] - '0')  + (numBuffer[7] - '0');
+        State.temp_day_min = 10 * (numBuffer[15] - '0') + (numBuffer[19] - '0');
+        if(State.temp_day_min < 10 || State.temp_day_min > 90 ||
+           State.temp_day_max < 10 || State.temp_day_max > 90 ||
+           State.temp_day_min == State.temp_day_max){
+            State.request_set_day_temp = 0;
+            SMS_Queue_Push(TelNum, SIM900_SMS_REPORT_GENERAL_INVALID_COMMAND, SMS_LIFETIME);
+        }else{
+            // If max. temp. < min. temp., swap them
             if(State.temp_day_max < State.temp_day_min){
                 u8 swap;
                 swap = State.temp_day_max;
@@ -290,14 +294,9 @@ void SIM900_ReadSms(void){
                 State.temp_day_min = swap;
             }
             State.request_set_day_temp = 1;
-            SMS_Queue_Push(TelNum, SIM900_SMS_REPORT_GENERAL_OK, SMS_LIFETIME);
-        }else{
-        SendIncorrectTemperatureSMS:
-            State.request_set_day_temp = 0;
-            SMS_Queue_Push(TelNum, SIM900_SMS_REPORT_GENERAL_INVALID_COMMAND, SMS_LIFETIME);
         }
     }else
-    // Check current parameters
+    // Check current parameters and settings
     if(SIM900_CircularBuf_Search(SIM900_SMS_CMD_CHECK) != -1 &&
        (TelDir_FindTelNumber(TelNum) != -1 || SIM900_CircularBuf_Search(TelDir_GetPwd()) != -1)){
         State.request_sen_get = 1;
@@ -313,29 +312,29 @@ void SIM900_ReadSms(void){
     if(SIM900_CircularBuf_Search(SIM900_SMS_CMD_NIGHT_MODE_OFF) != -1 &&
        (TelDir_FindTelNumber(TelNum) != -1 || SIM900_CircularBuf_Search(TelDir_GetPwd()) != -1)){
         State.request_night_mode_off = 1;
+        State.request_night_mode_on = 0;
         strcpy((char *)State.TelNumOfSourceOfRequest, (char const *)TelNum);
-        SMS_Queue_Push(TelNum, SIM900_SMS_REPORT_GENERAL_OK, SMS_LIFETIME);
     }else
     // Enable night mod
     if(SIM900_CircularBuf_Search(SIM900_SMS_CMD_NIGHT_MODE_ON) != -1 &&
        (TelDir_FindTelNumber(TelNum) != -1 || SIM900_CircularBuf_Search(TelDir_GetPwd()) != -1)){
         State.request_night_mode_on = 1;
+        State.request_night_mode_off = 0;
         strcpy((char *)State.TelNumOfSourceOfRequest, (char const *)TelNum);
-        SMS_Queue_Push(TelNum, SIM900_SMS_REPORT_GENERAL_OK, SMS_LIFETIME);
     }else
     // Switch off the burner
     if(SIM900_CircularBuf_Search(SIM900_SMS_CMD_BURNER_OFF) != -1 &&
        (TelDir_FindTelNumber(TelNum) != -1 || SIM900_CircularBuf_Search(TelDir_GetPwd()) != -1)){
         State.request_burner_switch_on = 0;
         State.request_burner_switch_off = 1;
-        SMS_Queue_Push(TelNum, SIM900_SMS_REPORT_GENERAL_OK, SMS_LIFETIME);
+        strcpy((char *)State.TelNumOfSourceOfRequest, (char const *)TelNum);
     }else
     // Switch on the burner
     if(SIM900_CircularBuf_Search(SIM900_SMS_CMD_BURNER_ON) != -1 &&
        (TelDir_FindTelNumber(TelNum) != -1 || SIM900_CircularBuf_Search(TelDir_GetPwd()) != -1)){
         State.request_burner_switch_on = 1;
         State.request_burner_switch_off = 0;
-        SMS_Queue_Push(TelNum, SIM900_SMS_REPORT_GENERAL_OK, SMS_LIFETIME);
+        strcpy((char *)State.TelNumOfSourceOfRequest, (char const *)TelNum);
     }else
     // Set number for balance checking
     if(SIM900_CircularBuffer_ExtractBalanceNum(SIM900_SMS_CMD_SET_BALANCE, TelNum_Balance, sizeof(TelNum_Balance) - 1) &&
@@ -543,7 +542,7 @@ u8 SIM900_CircularBuffer_Extract(const u8 Pattern[], u8 *Dst, u16 Num, u8 DelCha
     return 0;
 }
 
-u8 SIM900_CircularBuffer_ExtractWithUnicodeDelimeter(const u8 Pattern[], u8 *Dst, u16 Num, u8* DelChar){
+u8 SIM900_CircularBuffer_ExtractWithUnicodeDelimeter(const u8 Pattern[], u8 *Dst, u16 Num, const u8* DelChar){
     u16 i, j, k, l, p, q;
 
     // Find length of given pattern
@@ -572,11 +571,12 @@ u8 SIM900_CircularBuffer_ExtractWithUnicodeDelimeter(const u8 Pattern[], u8 *Dst
                 j = j < CIRBUF_SIZE - 1 ? ++j : 0; // set pointer to the begin
                 for(    q = 0;
                         q < Num &&
-                            (CirBuf[j] != DelChar[0] &&
-                             CirBuf[j + 1 < CIRBUF_SIZE ? j + 1 : j + 1 - CIRBUF_SIZE] != DelChar[1] &&
-                             CirBuf[j + 2 < CIRBUF_SIZE ? j + 2 : j + 2 - CIRBUF_SIZE] != DelChar[2] &&
+                            (CirBuf[j] != DelChar[0] ||
+                             CirBuf[j + 1 < CIRBUF_SIZE ? j + 1 : j + 1 - CIRBUF_SIZE] != DelChar[1] ||
+                             CirBuf[j + 2 < CIRBUF_SIZE ? j + 2 : j + 2 - CIRBUF_SIZE] != DelChar[2] ||
                              CirBuf[j + 3 < CIRBUF_SIZE ? j + 3 : j + 3 - CIRBUF_SIZE] != DelChar[3]);
-                        j = j < CIRBUF_SIZE - 1 ? ++j : 0, ++q  ) Dst[q] = CirBuf[j];
+                        j = j < CIRBUF_SIZE - 1 ? ++j : 0, ++q  )
+                    Dst[q] = CirBuf[j];
                 Dst[q] = '\0';
                 return 1;
             }

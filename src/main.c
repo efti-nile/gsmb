@@ -18,7 +18,7 @@ int main(void)
 
 #ifdef __DBG__
     //TelDir_SetBalanceNumber("002A0031003000300023");
-    //TelDir_Push("00380039003100390038003000340031003100350034");
+    TelDir_Push("00380039003100390038003000340031003100350034");
 #endif
 
     MSP430_UART_Init();
@@ -38,10 +38,6 @@ int main(void)
     while(1){
         if(!SIM900_GetStatus()){
             SIM900_ReInit();
-        }else if(State.controller_link_timeout > 0){
-            LED_ON;
-        }else{
-            LED_OFF;
         }
 
 		WDTCTL = WDTPW + WDTCNTCL;
@@ -207,6 +203,7 @@ void SysTimer_Start(){
 __interrupt void TIMER1_A1_ISR(void){
     if(TA1CTL & TAIFG){
         TA1R = 0x0000;
+        num_received_bytes = 0;
         if(State.initialization_in_progress){
             LED_TOGGLE;
         }
