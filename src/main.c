@@ -7,7 +7,6 @@ struct OutPack_TypeDef OutPack;
 int main(void)
 {
     WDTCTL = WDTPW + WDTCNTCL; // 1 min 25 s watchdog @ SMCLK 25MHz
-    //WDTCTL = WDTHOLD + WDTPW;
 
     State.initialization_in_progress = 1;
 
@@ -22,22 +21,18 @@ int main(void)
 #endif
 
     MSP430_UART_Init();
-//    Loads_Init();
     SMS_Queue_Init();
-    //PowMeas_Init();
     __bis_SR_register(GIE);
     SysTimer_Start();
     SIM900_ReInit();
-
-//    if(!PowMeas_ExternSupplyStatus()){
-//        PowerDisappeared();
-//    }
 
     State.initialization_in_progress = 0;
 
     while(1){
         if(!SIM900_GetStatus()){
             SIM900_ReInit();
+        }else{
+            LED_ON;
         }
 
 		WDTCTL = WDTPW + WDTCNTCL;
@@ -53,93 +48,7 @@ int main(void)
             }
         }
         SIM900_SendSms();
-
-        // Check link with main controller
-//        State.link_ok_with_main_controller_prev = State.link_ok_with_main_controller_now;
-//        State.link_ok_with_main_controller_now = (State.controller_link_timeout > 0);
-//        if( State.link_ok_with_main_controller_prev &&
-//            !State.link_ok_with_main_controller_now )
-//        {
-//            u8 TelNum[SMS_TELNUM_LEN];
-//            TelDir_Iterator_Init();
-//            while(TelDir_GetNextTelNum(TelNum)){
-//                SMS_Queue_Push(TelNum, SIM900_SMS_REPORT_LINK_LOST_WITH_MAIN_CONTROLLER, SMS_LIFETIME);
-//            }
-//        }
-
-#ifdef __PWR_CONTROL__
-        // Check battery in GSM Extender
-        State.battery_ok_in_gsm_extender_prev = State.battery_ok_in_gsm_extender_now;
-        State.battery_ok_in_gsm_extender_now = PowMeas_BatteryStatus();
-        if( State.battery_ok_in_gsm_extender_prev &&
-            !State.battery_ok_in_gsm_extender_now )
-        {
-            u8 TelNum[SMS_TELNUM_LEN];
-            TelDir_Iterator_Init();
-            while(TelDir_GetNextTelNum(TelNum)){
-                SMS_Queue_Push(TelNum, SIM900_SMS_REPORT_BATTERY_LOW_IN_GSM_EXTENDER, SMS_LIFETIME);
-            }
-        }
-
-        // Check external supply in GSM Extender
-        State.ext_supply_ok_prev = State.ext_supply_ok_now;
-        State.ext_supply_ok_now = PowMeas_ExternSupplyStatus();
-        if( State.ext_supply_ok_prev &&
-            !State.ext_supply_ok_now )
-        {
-            // Normally MCU is reset when external pwr disappear, so
-            // that code is not executed.
-            PowerDisappeared();
-        }
-#endif
-
-        // If open valves timeout elapsed
-        if(!State.open_valves_timeout && State.request_open_valves){
-            State.request_open_valves = 0;
-            SMS_Queue_Push(State.TelNumOfSourceOfRequest, SIM900_SMS_REPORT_OPEN_NOT_ALL, SMS_LIFETIME);
-        }
-
-        // If close valves timeout elapsed
-        if(!State.close_valves_timeout && State.request_close_valves){
-            State.request_close_valves = 0;
-            SMS_Queue_Push(State.TelNumOfSourceOfRequest, SIM900_SMS_REPORT_CLOSE_NOT_ALL, SMS_LIFETIME);
-        }
     }
-}
-
-/*!
-    \brief Exetues some action on external power fault
-
-    Sends SMSs for every user in the dictionary that ext. pwr
-    disappeared.
-
-    Swithes off the GSM-module
-
-    Waits for ext. pwr resume.
-*/
-void PowerDisappeared(void){
-    u8 TelNum[SMS_TELNUM_LEN];
-
-    TelDir_Iterator_Init();
-    while(TelDir_GetNextTelNum(TelNum)){
-        SMS_Queue_Push(TelNum, SIM900_SMS_REPORT_EXTERNAL_SUPPLY_LOST, SMS_LIFETIME);
-    }
-
-    SIM900_SendSms();
-
-    SIM900_PowerOff();
-
-    __bic_SR_register(GIE);
-
-    LED_OFF;
-
-    while(!PowMeas_ExternSupplyStatus()){
-        WDTCTL = WDTPW + WDTCNTCL;
-    }
-
-    __bis_SR_register(GIE);
-
-    SIM900_ReInit();
 }
 
 /*!
@@ -225,18 +134,6 @@ __interrupt void TIMER1_A1_ISR(void){
         if(State.link_lost_flag_timeout > 0){
             State.link_lost_flag_timeout--;
         }
-#ifdef __DBG__
-        if(State.leak_now){
-            Loads_Command(LOAD1_ON);
-        }else{
-            Loads_Command(LOAD1_OFF);
-        };
-        if(State.leak_removed_now){
-            Loads_Command(LOAD2_ON);
-        }else{
-            Loads_Command(LOAD2_OFF);
-        };
-#endif
         TA1CTL &= ~TAIFG;
     }
 }

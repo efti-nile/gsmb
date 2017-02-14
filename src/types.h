@@ -76,6 +76,8 @@ struct State_TypeDef{
     u8 night_begin;
     u8 night_end;
 
+    u8 request_in_progress;
+
     u8 sms_received;
 };
 

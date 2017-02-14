@@ -215,6 +215,20 @@ void SIM900_ReadSms(void){
         // Push answer in the SMS queue
         SMS_Queue_Push(TelNum,  (u8 *)text, SMS_LIFETIME);
     }else
+    // HW reset the burner
+    if(SIM900_CircularBuf_Search(SIM900_SMS_CMD_RESET_BURNER) != -1 &&
+       (TelDir_FindTelNumber(TelNum) != -1 || SIM900_CircularBuf_Search(TelDir_GetPwd()) != -1)){
+        // Init the reset pin P3.2
+        P3DIR |= BIT2;
+        P3REN &= BIT2^0xFF;
+        P3SEL &= BIT2^0xFF;
+        P3DS  &= BIT2^0xFF;
+        // Pull down
+        P3OUT &= BIT2^0xFF;
+        Delay_DelayMs(100);
+        P3OUT |= BIT2;
+        //SMS_Queue_Push(TelNum, SIM900_SMS_REPORT_RESET_BURNER, SMS_LIFETIME);
+    }else
     // Request to change the begin and the end of the night
     if(SIM900_CircularBuf_Search(SIM900_SMS_CMD_SET_NIGHT_TIME) != -1 &&
        (TelDir_FindTelNumber(TelNum) != -1 || SIM900_CircularBuf_Search(TelDir_GetPwd()) != -1)){
@@ -241,6 +255,7 @@ void SIM900_ReadSms(void){
         // Check parameters
         if(State.night_begin <= 23 && State.night_end <= 23 && State.night_begin != State.night_end){
             State.request_set_night_time = 1;
+            State.request_in_progress = 1;
         }else{
             State.request_set_night_time = 0;
             SMS_Queue_Push(TelNum, SIM900_SMS_REPORT_GENERAL_INVALID_COMMAND, SMS_LIFETIME);
@@ -269,6 +284,7 @@ void SIM900_ReadSms(void){
                 State.temp_night_min = swap;
             }
             State.request_set_night_temp = 1;
+            State.request_in_progress = 1;
         }
     }else
     // Request to change the day temperature
@@ -294,18 +310,14 @@ void SIM900_ReadSms(void){
                 State.temp_day_min = swap;
             }
             State.request_set_day_temp = 1;
+            State.request_in_progress = 1;
         }
     }else
     // Check current parameters and settings
-    if(SIM900_CircularBuf_Search(SIM900_SMS_CMD_CHECK) != -1 &&
-       (TelDir_FindTelNumber(TelNum) != -1 || SIM900_CircularBuf_Search(TelDir_GetPwd()) != -1)){
-        State.request_sen_get = 1;
-        strcpy((char *)State.TelNumOfSourceOfRequest, (char const *)TelNum);
-    }else
-    // WTFMAN???WTFMAN???WTFMAN???WTFMAN???WTFMAN???WTFMAN???WTFMAN???WTFMAN???WTFMAN???
     if(SIM900_CircularBuf_Search(SIM900_SMS_CMD_RECV_SETTINGS) != -1 &&
        (TelDir_FindTelNumber(TelNum) != -1 || SIM900_CircularBuf_Search(TelDir_GetPwd()) != -1)){
-        State.request_recv_setiings = 1;
+        State.request_sen_get = 1;
+        State.request_in_progress = 1;
         strcpy((char *)State.TelNumOfSourceOfRequest, (char const *)TelNum);
     }else
     // Disable night mod
@@ -313,6 +325,7 @@ void SIM900_ReadSms(void){
        (TelDir_FindTelNumber(TelNum) != -1 || SIM900_CircularBuf_Search(TelDir_GetPwd()) != -1)){
         State.request_night_mode_off = 1;
         State.request_night_mode_on = 0;
+        State.request_in_progress = 1;
         strcpy((char *)State.TelNumOfSourceOfRequest, (char const *)TelNum);
     }else
     // Enable night mod
@@ -320,6 +333,7 @@ void SIM900_ReadSms(void){
        (TelDir_FindTelNumber(TelNum) != -1 || SIM900_CircularBuf_Search(TelDir_GetPwd()) != -1)){
         State.request_night_mode_on = 1;
         State.request_night_mode_off = 0;
+        State.request_in_progress = 1;
         strcpy((char *)State.TelNumOfSourceOfRequest, (char const *)TelNum);
     }else
     // Switch off the burner
@@ -327,6 +341,7 @@ void SIM900_ReadSms(void){
        (TelDir_FindTelNumber(TelNum) != -1 || SIM900_CircularBuf_Search(TelDir_GetPwd()) != -1)){
         State.request_burner_switch_on = 0;
         State.request_burner_switch_off = 1;
+        State.request_in_progress = 1;
         strcpy((char *)State.TelNumOfSourceOfRequest, (char const *)TelNum);
     }else
     // Switch on the burner
@@ -334,6 +349,7 @@ void SIM900_ReadSms(void){
        (TelDir_FindTelNumber(TelNum) != -1 || SIM900_CircularBuf_Search(TelDir_GetPwd()) != -1)){
         State.request_burner_switch_on = 1;
         State.request_burner_switch_off = 0;
+        State.request_in_progress = 1;
         strcpy((char *)State.TelNumOfSourceOfRequest, (char const *)TelNum);
     }else
     // Set number for balance checking
