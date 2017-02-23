@@ -1,8 +1,7 @@
 #include "teldir.h"
 
 __no_init static struct TelDir_TypeDef TelDir;
-// Default password
-static const u8 TELDIR_DEFAULT_PWD[] = "043A0440043E043B0438043A";
+static const u8 TELDIR_DEFAULT_PWD[] = "003100320033"; // Default password
 
 void TelDir_Init(void){
     if(*((u8*)BEGIN_AVAILABLE_SPACE) == 0xFF){ // If it is the first device start

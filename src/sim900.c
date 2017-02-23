@@ -80,7 +80,6 @@ func_begin:
             goto func_begin;
         }
     }
-    SIM900_CircularBuffer_Purge();
 
     // Give SIM900 some time for thinking
     Delay_DelayMs(3000);
@@ -88,6 +87,8 @@ func_begin:
     if(!SIM900_GetStatus()){
         goto func_begin;
     }
+
+    SIM900_CircularBuffer_Purge();
 }
 
 void SIM900_ReadSms(void){
@@ -102,7 +103,6 @@ void SIM900_ReadSms(void){
         // SMSs then return to the main loop
         SIM900_SendStr("AT+CMGD=1,4\r");
         if(!SIM900_WaitForResponse("OK", "ERROR")){
-            SIM900_SendStr("ERROR: 7");
             ErrorHandler(7);
         }
         SIM900_CircularBuffer_Purge();
@@ -117,7 +117,6 @@ void SIM900_ReadSms(void){
 
         SIM900_SendStr("AT+CMGD=1,4\r");
         if(!SIM900_WaitForResponse("OK", "ERROR")){
-            SIM900_SendStr("ERROR: 8");
             ErrorHandler(8);
         }
 
@@ -389,8 +388,7 @@ void SIM900_ReadSms(void){
 
     SIM900_SendStr("AT+CMGD=1,4\r");
     if(!SIM900_WaitForResponse("OK", "ERROR")){
-        SIM900_SendStr("ERROR: 8");
-        ErrorHandler(8);
+        ErrorHandler(10);
         SIM900_CircularBuffer_Purge();
         return;
     }

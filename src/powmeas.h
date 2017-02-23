@@ -7,11 +7,7 @@
 
 // Timeouts ////////////////////////////////////////////////////////////////////
 // 1 == 2 ms approx
-#ifndef __DBG__
 #define BATMEAS_PER            500
-#else
-#define BATMEAS_PER            500
-#endif
 
 // Samples per 1 measurement
 #define NUM_SMPLS_PER_ONE_MEASUREMENT 20

@@ -79,6 +79,8 @@ struct State_TypeDef{
     u8 request_in_progress;
 
     u8 sms_received;
+
+    u16 sys_time;
 };
 
 struct InPack_TypeDef{
@@ -128,5 +130,4 @@ struct SmsPool_Item_TypeDef{
     u8 Text[SMSPOOL_SMS_MAXLEN];
     u8 Qty;
 };
-
 #endif

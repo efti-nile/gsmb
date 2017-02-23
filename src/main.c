@@ -27,12 +27,39 @@ int main(void)
     SIM900_ReInit();
 
     State.initialization_in_progress = 0;
+    LED_ON;
 
     while(1){
         if(!SIM900_GetStatus()){
             SIM900_ReInit();
-        }else{
-            LED_ON;
+        }
+
+        // With 33 * 0.15 = 5 seconds period approx. check the signal
+        if(State.sys_time % 33 == 0){
+            u8 result_str[2*4 + 1];
+            SIM900_SendStr("AT+CSQ=1\r");
+            if(!SIM900_WaitForResponse("OK", "ERROR")){
+                ErrorHandler(5);
+            }
+            // Extract required substring from the answer
+            SIM900_CircularBuffer_Extract("+CSQ: ", result_str, 2*4, ',');
+            // Check if the given substring is correct
+            if(!isOnlyUCS2Numbers(result_str)){
+                ErrorHandler(11);
+            }
+            // Extract the result and blink it out via LED
+            u16 GSM_signal_level = UCS2ToNumber(result_str)
+            if( GSM_signal_level <= 10){ // Low levl
+                BlinkOut(2);
+            }else if(GSM_signal_level <= 20){ // Normal level
+                BlinkOut(3);
+            }else if(GSM_signal_level <= 31){ // Good level
+                BlinkOut(4);
+            }else if(GSM_signal_level == 99){ // No signal
+                BlinkOut(1);
+            }else{
+                ErrorHandler(12);
+            }
         }
 
 		WDTCTL = WDTPW + WDTCNTCL;
@@ -52,12 +79,69 @@ int main(void)
 }
 
 /*!
+    \brief Blink out via LEDs given number
+*/
+void BlinkOut(u16 n){
+    LED_OFF;
+    Delay_DelayMs(1000);
+    while(n-- != 0){
+        LED_ON;
+        Delay_DelayMs(200);
+        LED_OFF;
+        Delay_DelayMs(200);
+    }
+    Delay_DelayMs(1000);
+    LED_ON;
+}
+
+/*!
+    \brief Check if the given string contains only numbers in UCS2
+
+    Examples of string, which makes the function to return 1 (i. e. true):
+        "00300031", "0032003500390032"
+    Examples of string, which makes the function to return 0 (i. e. false):
+        "0300031", "0062003500390032"
+*/
+u16 isOnlyUCS2Numbers(u8 str[]){
+    u16 i, l = strlen((const char *)str);
+    if(l % 4 != 0){
+        return 0;
+    }
+    for(i < 0; i < l; i += 4){
+        if(result[i + 0] != '0' ||
+           result[i + 1] != '0' ||
+           result[i + 2] != '3' ||
+           result[i + 3]  < '0' || result[i + 3] > '9'){
+            return 0;
+        }
+    }
+    return 1;
+}
+
+/*!
+    \brief Converts UCS2 number string in the number
+
+    May converts numbers only 0..65535. Doesn't any checks of the given
+    string.
+
+    Example of valid strings: "00300031", "0032003500390032"
+*/
+u16 UCS2ToNumber(u8 str[]){
+    u16 i = 0, res = 0;
+    do{
+        res = (str[i + 3] - '0') + res * 10;
+        i += 4;
+    }while(str[i] != '\0');
+    return res;
+}
+
+/*!
     \brief Blinkes the error and restarts SIM900
 
     The function blinks out the number of the error by the LED.
 */
-void ErrorHandler(u32 ErrNum){
-    u32 i;
+void ErrorHandler(u16 ErrNum){
+    u16 i;
 
     LED_OFF;
 
@@ -89,24 +173,6 @@ void SysTimer_Start(){
 
 /*!
     \brief TIMER_A1 ISR counts down timeouts in the system
-
-    The timer catches several timeouts.
-
-    1. Close Valves Timeout
-    This timeout is set when command to close all valves received and the
-    timeout is being expired until acknoledgement of succesful command execution
-    gotten.
-
-    2. Open Valves Timeout
-    This timeout is set when command to open all valves received and the
-    timeout is being expired until acknoledgement of succesful command execution
-    gotten.
-
-    3. OK Timeout
-    This timeout is reset each time WaterLeak controller riches us. If timeout
-    eventually expired that's concerned as the WaterLeak controller lost.
-
-    Etc.
 */
 #pragma vector=TIMER1_A1_VECTOR
 __interrupt void TIMER1_A1_ISR(void){
@@ -116,24 +182,7 @@ __interrupt void TIMER1_A1_ISR(void){
         if(State.initialization_in_progress){
             LED_TOGGLE;
         }
-        if(State.close_valves_timeout > 0){
-            State.close_valves_timeout--;
-        }
-        if(State.open_valves_timeout > 0){
-            State.open_valves_timeout--;
-        }
-		if(State.controller_link_timeout > 0){
-			State.controller_link_timeout--;
-		}
-        if(State.leak_flag_timeout > 0){
-            State.leak_flag_timeout--;
-        }
-        if(State.leak_removed_flag_timeout > 0){
-            State.leak_removed_flag_timeout--;
-        }
-        if(State.link_lost_flag_timeout > 0){
-            State.link_lost_flag_timeout--;
-        }
+        State.sys_time++;
         TA1CTL &= ~TAIFG;
     }
 }

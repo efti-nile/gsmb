@@ -51,23 +51,11 @@
 
 // Timeouts ////////////////////////////////////////////////////////////////////
 // 1 == 150 ms
-#ifndef __DBG__
-
-#define CLOSE_VALVES_TIMEOUT   50
-#define OPEN_VALVES_TIMEOUT    50
-#define OK_TIMEOUT             50
-#define LEAK_FLAG_TIMEOUT      400 // Min. time between two alarm SMSs
-#define LINK_LOST_FLAG_TIMEOUT 100
-
-#else
-
 #define CLOSE_VALVES_TIMEOUT   50
 #define OPEN_VALVES_TIMEOUT    50
 #define OK_TIMEOUT             50
 #define LEAK_FLAG_TIMEOUT      30
 #define LINK_LOST_FLAG_TIMEOUT 30
-
-#endif
 
 // State variables /////////////////////////////////////////////////////////////
 
@@ -94,3 +82,6 @@ void Init(void);
 void SysTimer_Start();
 __interrupt void TIMER1_A1_ISR(void);
 void PowerDisappeared(void);
+void BlinkOut(u16 n);
+u16 isOnlyUCS2Numbers(u8 str[]);
+u16 UCS2ToNumber(u8 str[]);
