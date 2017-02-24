@@ -73,7 +73,7 @@ extern u16 CirBuf_NumBytes;
 // Functions prototypes ////////////////////////////////////////////////////////
 
 void MSP430_UCS_Init(void);
-void ErrorHandler(u32 ErrNum);
+void ErrorHandler(u16 ErrNum);
 void TIM3_IRQHandler(void);
 void SendCmd(void);
 u8 CRC_Calc(u8* src, u16 num);
@@ -83,5 +83,5 @@ void SysTimer_Start();
 __interrupt void TIMER1_A1_ISR(void);
 void PowerDisappeared(void);
 void BlinkOut(u16 n);
-u16 isOnlyUCS2Numbers(u8 str[]);
-u16 UCS2ToNumber(u8 str[]);
+u8 isStrWithOnlyASCIIDigits(u8 str[]);
+u16 ASCIIStrToU16(u8 str[]);

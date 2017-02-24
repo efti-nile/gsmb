@@ -35,20 +35,20 @@ int main(void)
         }
 
         // With 33 * 0.15 = 5 seconds period approx. check the signal
-        if(State.sys_time % 33 == 0){
-            u8 result_str[2*4 + 1];
-            SIM900_SendStr("AT+CSQ=1\r");
+        if(State.sys_time % 100 == 0){
+            u8 result_str[2+1];
+            SIM900_SendStr("AT+CSQ\r");
             if(!SIM900_WaitForResponse("OK", "ERROR")){
                 ErrorHandler(5);
             }
             // Extract required substring from the answer
-            SIM900_CircularBuffer_Extract("+CSQ: ", result_str, 2*4, ',');
+            SIM900_CircularBuffer_Extract("+CSQ: ", result_str, 2, ',');
             // Check if the given substring is correct
-            if(!isOnlyUCS2Numbers(result_str)){
+            if(!isStrWithOnlyASCIIDigits(result_str)){
                 ErrorHandler(11);
             }
             // Extract the result and blink it out via LED
-            u16 GSM_signal_level = UCS2ToNumber(result_str)
+            u8 GSM_signal_level = ASCIIStrToU16(result_str);
             if( GSM_signal_level <= 10){ // Low levl
                 BlinkOut(2);
             }else if(GSM_signal_level <= 20){ // Normal level
@@ -85,53 +85,46 @@ void BlinkOut(u16 n){
     LED_OFF;
     Delay_DelayMs(1000);
     while(n-- != 0){
+        LED_OFF;
+        Delay_DelayMs(100);
         LED_ON;
         Delay_DelayMs(200);
         LED_OFF;
-        Delay_DelayMs(200);
+        Delay_DelayMs(100);
     }
     Delay_DelayMs(1000);
     LED_ON;
 }
 
 /*!
-    \brief Check if the given string contains only numbers in UCS2
+    \brief Check if the given string contains only ASCII digits.
 
-    Examples of string, which makes the function to return 1 (i. e. true):
-        "00300031", "0032003500390032"
-    Examples of string, which makes the function to return 0 (i. e. false):
-        "0300031", "0062003500390032"
+    Max. string length is 256 including '\0'
+
+    Examples of string which make the function to return 1 (i. e. true):
+        "13124", "001540"
 */
-u16 isOnlyUCS2Numbers(u8 str[]){
-    u16 i, l = strlen((const char *)str);
-    if(l % 4 != 0){
-        return 0;
-    }
-    for(i < 0; i < l; i += 4){
-        if(result[i + 0] != '0' ||
-           result[i + 1] != '0' ||
-           result[i + 2] != '3' ||
-           result[i + 3]  < '0' || result[i + 3] > '9'){
+u8 isStrWithOnlyASCIIDigits(u8 str[]){
+    u8 i=0;
+    do{
+        if(str[i]<'0'||str[i]>'9')
             return 0;
-        }
-    }
+    }while(str[++i]!='\0');
     return 1;
 }
 
 /*!
-    \brief Converts UCS2 number string in the number
+    \brief Converts given string with ASCII digits to U16 number
 
-    May converts numbers only 0..65535. Doesn't any checks of the given
-    string.
+    No any check of the given parameters.
 
-    Example of valid strings: "00300031", "0032003500390032"
+    Example of valid strings: "1242", "001353"
 */
-u16 UCS2ToNumber(u8 str[]){
-    u16 i = 0, res = 0;
+u16 ASCIIStrToU16(u8 str[]){
+    u8 i=0; u16 res=0;
     do{
-        res = (str[i + 3] - '0') + res * 10;
-        i += 4;
-    }while(str[i] != '\0');
+        res = res * 10 + (str[i] - '0');
+    }while(str[++i] != '\0');
     return res;
 }
 

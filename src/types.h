@@ -9,8 +9,8 @@
 
 #define VALVE_NAME_MAXLEN (10+1)
 
-#define LED_ON     P5OUT |= BIT3
-#define LED_OFF    P5OUT &= ~BIT3
+#define LED_ON     P5OUT &= ~BIT3
+#define LED_OFF    P5OUT |= BIT3
 #define LED_TOGGLE P5OUT ^= BIT3
 
 typedef unsigned long int u32;
