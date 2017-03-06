@@ -101,7 +101,6 @@ __interrupt void USCI_A0_ISR(void){
     case 0: // Vector 0 - no interrupt
         break;
     case 2: // Vector 2 - RXIFG
-        // if_address = UCA0STAT & UCADDR;
         tmp = UCA0RXBUF;
 
         // Save received byte
@@ -116,7 +115,6 @@ __interrupt void USCI_A0_ISR(void){
                         OutPack.Length = 2;
                         if(State.sms_received){
                             OutPack.COMMAND = GSM_COMMAND_SMS_OK;
-                            return;
                         }else
                         if(State.request_burner_switch_off){
                             OutPack.COMMAND = GSM_COMMAND_OFF;
@@ -165,7 +163,6 @@ __interrupt void USCI_A0_ISR(void){
                         u8 *text;
                         ((u8 *)(&OutPack))[0] = 0x00;
                         ((u8 *)(&OutPack))[1] = 0x00;
-                        num_received_bytes = 0;
                         MSP430_UART_Send(UART_RS485, (u8 *)(&OutPack), 2);
                         State.sms_received = 1;
                         if(State.request_in_progress){

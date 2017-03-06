@@ -6,8 +6,6 @@ struct OutPack_TypeDef OutPack;
 
 int main(void)
 {
-    State.bypass = 0;
-
     WDTCTL = WDTPW + WDTCNTCL; // 1 min 25 s watchdog @ SMCLK 25MHz
 
     State.initialization_in_progress = 1;
@@ -77,9 +75,7 @@ int main(void)
             }
         }
 
-        State.bypass = 1;
         SIM900_SendSms();
-        State.bypass = 0;
     }
 }
 
