@@ -116,6 +116,7 @@ __interrupt void USCI_A0_ISR(void){
                         OutPack.Length = 2;
                         if(State.sms_received){
                             OutPack.COMMAND = GSM_COMMAND_SMS_OK;
+                            return;
                         }else
                         if(State.request_burner_switch_off){
                             OutPack.COMMAND = GSM_COMMAND_OFF;
@@ -162,6 +163,10 @@ __interrupt void USCI_A0_ISR(void){
                     }
                     case GSM_COMMAND_SMST: {
                         u8 *text;
+                        ((u8 *)(&OutPack))[0] = 0x00;
+                        ((u8 *)(&OutPack))[1] = 0x00;
+                        num_received_bytes = 0;
+                        MSP430_UART_Send(UART_RS485, (u8 *)(&OutPack), 2);
                         State.sms_received = 1;
                         if(State.request_in_progress){
                             State.request_in_progress = 0;

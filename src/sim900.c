@@ -401,6 +401,8 @@ void SIM900_SendSms(void){
     u8 *SmsText;
     u32 LifeTime;
 
+
+
     // Pop a SMS from the queue. If life-time elapsed -- return from here
     // and don't send the SMS
     if((LifeTime = SMS_Queue_Pop(TelNum, &SmsText)) == 0){
@@ -426,7 +428,7 @@ void SIM900_SendSms(void){
     SIM900_SendStr("\x1A\r"); // End of SMS text
 
     // Try during several time intervals to receive acknoledgment
-    for(u8 i = 0; i < 4; i++){
+    for(u8 i = 0; i < 6; i++){
       if(SIM900_WaitForResponse("OK", "ERROR")){
         return;
       }
@@ -437,7 +439,6 @@ void SIM900_SendSms(void){
     SMS_Queue_Push(TelNum, SmsText, LifeTime - 1);
 
     // Then restart SIM900
-    SIM900_SendStr("ERROR 6");
     ErrorHandler(6);
     SIM900_CircularBuffer_Purge();
 }

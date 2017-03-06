@@ -81,6 +81,8 @@ struct State_TypeDef{
     u8 sms_received;
 
     u16 sys_time;
+
+    u8 bypass;
 };
 
 struct InPack_TypeDef{

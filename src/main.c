@@ -6,6 +6,8 @@ struct OutPack_TypeDef OutPack;
 
 int main(void)
 {
+    State.bypass = 0;
+
     WDTCTL = WDTPW + WDTCNTCL; // 1 min 25 s watchdog @ SMCLK 25MHz
 
     State.initialization_in_progress = 1;
@@ -74,7 +76,10 @@ int main(void)
                 SIM900_ReadSms();
             }
         }
+
+        State.bypass = 1;
         SIM900_SendSms();
+        State.bypass = 0;
     }
 }
 
@@ -171,7 +176,9 @@ void SysTimer_Start(){
 __interrupt void TIMER1_A1_ISR(void){
     if(TA1CTL & TAIFG){
         TA1R = 0x0000;
-        num_received_bytes = 0;
+        if(num_received_bytes > 10){
+            num_received_bytes = 0;
+        }
         if(State.initialization_in_progress){
             LED_TOGGLE;
         }
