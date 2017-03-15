@@ -30,6 +30,10 @@ u8* SmsPool_Pull(u8 *text){
     return text;
 }
 
+void SmsPool_Del(u8 *text){
+    (((struct SmsPool_Item_TypeDef *)text)->Qty) = 0;
+}
+
 u8 SmsPool_Find(u8 *text){
   return (u8 *)&Pool <= text && text < (u8 *)&Pool + sizeof(Pool);
 }

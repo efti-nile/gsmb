@@ -38,7 +38,7 @@ int main(void)
         if(State.sys_time % 100 == 0){
             u8 result_str[2+1];
             SIM900_SendStr("AT+CSQ\r");
-            if(!SIM900_WaitForResponse("OK", "ERROR")){
+            if(!SIM900_WaitForResponse("OK", "ERROR", 150)){
                 ErrorHandler(5);
             }
             // Extract required substring from the answer

@@ -2,7 +2,7 @@
 
 extern struct TelDir_TypeDef TelDir;
 
-u8 SMS_Balance[SMS_TEXT_MAXLEN]; // TODO: maybe put it in stack?
+u8 SMS_Balance[SMS_TEXT_MAXLEN*4]; // TODO: maybe put it in stack?
 
 /*!
     \brief Tryes to initialize SIM900 untill success.
@@ -30,7 +30,7 @@ func_begin:
 
     // Switch off echo
     SIM900_SendStr("ATE0\r");
-    if(!SIM900_WaitForResponse("OK", "ERROR")){
+    if(!SIM900_WaitForResponse("OK", "ERROR", 150)){
         goto func_begin;
     }
     SIM900_CircularBuffer_Purge();
@@ -39,7 +39,7 @@ func_begin:
 
     // Set full error mode
     SIM900_SendStr("AT+CMEE=2\r");
-    if(!SIM900_WaitForResponse("OK", "ERROR")){
+    if(!SIM900_WaitForResponse("OK", "ERROR", 150)){
         goto func_begin;
     }
     SIM900_CircularBuffer_Purge();
@@ -48,7 +48,7 @@ func_begin:
 
     // Text mode
     SIM900_SendStr("AT+CMGF=1\r");
-    if(!SIM900_WaitForResponse("OK", "ERROR")){
+    if(!SIM900_WaitForResponse("OK", "ERROR", 150)){
         goto func_begin;
     }
     SIM900_CircularBuffer_Purge();
@@ -57,7 +57,7 @@ func_begin:
 
     // Choose character Set
     SIM900_SendStr("AT+CSCS=\"UCS2\"\r");
-    if(!SIM900_WaitForResponse("OK", "ERROR")){
+    if(!SIM900_WaitForResponse("OK", "ERROR", 150)){
         goto func_begin;
     }
     SIM900_CircularBuffer_Purge();
@@ -66,7 +66,7 @@ func_begin:
 
     // Extra settings
     SIM900_SendStr("AT+CSMP=17,167,0,25\r");
-    if(!SIM900_WaitForResponse("OK", "ERROR")){
+    if(!SIM900_WaitForResponse("OK", "ERROR", 150)){
         goto func_begin;
     }
     SIM900_CircularBuffer_Purge();
@@ -75,7 +75,7 @@ func_begin:
 
     // Delete all SMS
     SIM900_SendStr("AT+CMGD=1,4\r");
-    if(!SIM900_WaitForResponse("OK", "ERROR")){
+    if(!SIM900_WaitForResponse("OK", "ERROR", 150)){
         if(SIM900_CircularBuf_Search("SMS res") == -1){ // If we received +CMS ERROR: SMS reserved, it's OK
             goto func_begin;
         }
@@ -98,11 +98,11 @@ void SIM900_ReadSms(void){
 
     SIM900_SendStr("AT+CMGR=1\r"); // Read received SMS
 
-    if(!SIM900_WaitForResponse("OK", "ERROR")){
+    if(!SIM900_WaitForResponse("OK", "ERROR", 150)){
         // If we didn't receive response than delete all
         // SMSs then return to the main loop
         SIM900_SendStr("AT+CMGD=1,4\r");
-        if(!SIM900_WaitForResponse("OK", "ERROR")){
+        if(!SIM900_WaitForResponse("OK", "ERROR", 150)){
             ErrorHandler(7);
         }
         SIM900_CircularBuffer_Purge();
@@ -116,7 +116,7 @@ void SIM900_ReadSms(void){
         SIM900_CircularBuffer_Purge();
 
         SIM900_SendStr("AT+CMGD=1,4\r");
-        if(!SIM900_WaitForResponse("OK", "ERROR")){
+        if(!SIM900_WaitForResponse("OK", "ERROR", 150)){
             ErrorHandler(8);
         }
 
@@ -372,7 +372,7 @@ void SIM900_ReadSms(void){
 
             SIM900_SendStr(CMD);
 
-            if(SIM900_WaitForResponse("+CUSD: 0,\"", "ERROR")){
+            if(SIM900_WaitForResponse("+CUSD: 0,\"", "ERROR", 150)){
                 SIM900_CircularBuffer_Extract(",\"", SMS_Balance, sizeof(SMS_Balance) - 1, '"');
                 SMS_Queue_Push(TelNum, SMS_Balance, SMS_LIFETIME);
             }else{
@@ -387,7 +387,7 @@ void SIM900_ReadSms(void){
     SIM900_CircularBuffer_Purge();
 
     SIM900_SendStr("AT+CMGD=1,4\r");
-    if(!SIM900_WaitForResponse("OK", "ERROR")){
+    if(!SIM900_WaitForResponse("OK", "ERROR", 150)){
         ErrorHandler(10);
         SIM900_CircularBuffer_Purge();
         return;
@@ -414,8 +414,7 @@ void SIM900_SendSms(void){
     SIM900_SendStr(TelNum);
     SIM900_SendStr("\"\r");
 
-    if(!SIM900_WaitForResponse(">", "ERROR")){
-        SIM900_SendStr("ERROR 9");
+    if(!SIM900_WaitForResponse(">", "ERROR", 150)){
         ErrorHandler(9);
         SIM900_CircularBuffer_Purge();
         return;
@@ -428,10 +427,8 @@ void SIM900_SendSms(void){
     SIM900_SendStr("\x1A\r"); // End of SMS text
 
     // Try during several time intervals to receive acknoledgment
-    for(u8 i = 0; i < 6; i++){
-      if(SIM900_WaitForResponse("OK", "ERROR")){
+    if(SIM900_WaitForResponse("OK", "ERROR", 900)){
         return;
-      }
     }
 
     // If we didn't receive one, put outgoing SMS in queue again with decreased
@@ -693,9 +690,8 @@ u8 SIM900_CircularBuffer_ExtractBalanceNum(const u8 Pattern[], u8 *Dst, u16 Num)
     return 0;
 }
 
-u8 SIM900_WaitForResponse(u8 *pos_resp, u8 *neg_resp){
-    u32 timeout = SIM900_WAIT_FOR_RESPONSE_TIMEOUT;
-    while(timeout--){
+u8 SIM900_WaitForResponse(u8 *pos_resp, u8 *neg_resp, u16 timeout_100ms){
+    while(timeout_100ms--){
         Delay_DelayMs(100);
         if(SIM900_CircularBuf_Search(pos_resp) != -1){
             return 1;

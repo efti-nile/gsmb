@@ -15,7 +15,11 @@ void SMS_Queue_Push(u8 *TelNum, const u8 *SmsText, u8 LifeTime){
     SMS_Queue.List[SMS_Queue.LastItem].LifeTime = LifeTime;
     SMS_Queue.LastItem = SMS_Queue.LastItem < SMS_QUEUE_MAXSIZE - 1 ? ++SMS_Queue.LastItem : 0;
     if(SMS_Queue.LastItem == SMS_Queue.FirstItem){
+        if(SmsPool_Find(SMS_Queue.List[SMS_Queue.FirstItem].SmsText)){
+            SmsPool_Del(SMS_Queue.List[SMS_Queue.FirstItem].SmsText);
+        }
         SMS_Queue.FirstItem = SMS_Queue.FirstItem < SMS_QUEUE_MAXSIZE - 1 ? ++SMS_Queue.FirstItem : 0;
+        SMS_Queue.NumItems--;
     }
     SMS_Queue.NumItems++;
 }
@@ -35,8 +39,4 @@ u8 SMS_Queue_Pop(u8 *TelNum, u8 **SmsText){
     }else{
         return 0;
     }
-}
-
-u8 SMS_Queue_NumItems(void){
-    return SMS_Queue.NumItems;
 }

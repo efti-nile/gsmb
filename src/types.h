@@ -4,7 +4,7 @@
 #define CIRBUF_SIZE 300
 
 #define SMS_QUEUE_MAXSIZE (10+1)
-#define SMS_TEXT_MAXLEN (200+1)
+#define SMS_TEXT_MAXLEN (70+1)
 #define SMS_TELNUM_LEN (44+1)
 
 #define VALVE_NAME_MAXLEN (10+1)
@@ -125,8 +125,8 @@ struct TelDir_TypeDef{
 };
 
 // SMS pool
-#define SMSPOOL_SMS_MAXLEN (160 + 1)
-#define SMSPOOL_SIZE 3
+#define SMSPOOL_SMS_MAXLEN (SMS_TEXT_MAXLEN*4 + 1)
+#define SMSPOOL_SIZE 5
 
 struct SmsPool_Item_TypeDef{
     u8 Text[SMSPOOL_SMS_MAXLEN];
